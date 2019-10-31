@@ -1,0 +1,86 @@
+#!/usr/bin/python3
+import os
+import sys
+import json
+import argparse
+import termcolor
+import quickfuzz
+
+parser = argparse.ArgumentParser(description='''quickfuzz is a tool for service discovery on ports that nmap has flagged as unknown.
+                                                It does simply send a list of specific payloads to the specified host and checks if
+                                                something comes back. It has become one of my favorite little helpers during pentests,
+                                                since many services that are flagged as unkown by nmap do still respond to a particular
+                                                protocol like XML or HTTP.''')
+
+parser.add_argument('ip', help='ip address of the target')
+parser.add_argument('port', type=int, help='port you want to test')
+parser.add_argument('--connect-timeout', dest="ct", type=int, default=2, help='time to wait if the port is closed')
+parser.add_argument('--json', action='store_true', help='print the result summary in json')
+parser.add_argument('--payload-dir', dest='payload_dir', help='use an alternative payload directory')
+parser.add_argument('--no-failed', dest='nofailed', action='store_true', help='only display successfull payloads')
+parser.add_argument('--no-color', dest='nocolor', action='store_true', help='do not use color highlighting')
+parser.add_argument('--retries', type=int, default=-1, help='number of retires if a port is closed (default=infinite)')
+parser.add_argument('--ssl', action='store_true', help='use ssl sockets for this port')
+parser.add_argument('--summary', action='store_true', help='print a summary in the end instead of live data')
+parser.add_argument('--threads', type=int, default=1, help='use ssl sockets for this port')
+parser.add_argument('--timeout', type=int, default=2, help='time to wait for a response (default=2)')
+
+
+def main():
+    '''
+    main function of quickfuzz. Simply starts to send payloads to the targeted host.
+
+    Paramaters:
+        None
+
+    Returns:
+        None
+    '''
+    payload_dir = os.path.expanduser("~") + '/.local/share/quickfuzz/payloads'
+    args = parser.parse_args()
+
+    # If an alternative payload dir was specified, we set it as default
+    if args.payload_dir:
+        payload_dir = args.payload_dir
+
+    # Create a fuzzer object
+    live = not args.summary and not args.json
+    fuzzer = quickfuzz.Fuzzer(args.ip, args.port, connect_timeout=args.ct, max_retries=args.retries,
+                              no_color=args.nocolor, no_failed=args.nofailed, ssl=args.ssl,
+                              server_timeout=args.timeout, threads=args.threads, verbose=live)
+
+    # Some payloads contain parameters. Here we cann add their corresponding replacements
+    fuzzer.add_parameter(b'<@:IP:@>', args.ip.encode('utf-8'))
+    fuzzer.add_parameter(b'<@:PORT:@>', str(args.port).encode('utf-8'))
+
+    # If more than one thread is desired, we should check whether the targeted port is blocking. 
+    # If this is the case, we may need to decrease the number of threads
+    if args.threads > 1:
+
+        accepted = fuzzer.is_blocking(args.threads)
+        if accepted != args.threads:
+            if args.nocolor:
+                print(f"[/] Target accepted {accepted} simoultaneus connections.", file=sys.stderr)
+                print(f"[/] Adjusting number of threads to {accepted}.", file=sys.stderr)
+            else:
+                termcolor.cprint(f"[/] Target accepted {accepted} simoultaneus connections.", "yellow", file=sys.stderr)
+                termcolor.cprint(f"[/] Adjusting number of threads to {accepted}.", "yellow", file=sys.stderr)
+            fuzzer.threads = accepted
+
+    # Load the payloads from our payload_dir variable
+    fuzzer.load_payloads(payload_dir)
+
+    # Start the fuzzing process
+    fuzzer.start_fuzzing()
+
+    # If summary mode is enabled we print a summary over all payloads at this point
+    if args.summary:
+        print(fuzzer.get_results(), end='')
+
+    # If summary and json mode is enabled, we print the results summary in json
+    if args.json:
+        print(fuzzer.get_results_json())
+
+
+if __name__ == '__main__':
+    main()

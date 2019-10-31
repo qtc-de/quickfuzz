@@ -1,0 +1,38 @@
+#!/bin/bash
+
+_quickfuzz() {
+
+	# opts		=	completion options
+	# cur		=	current word
+	# prev		=	previous word
+	local opts cur prev
+
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+	# By default, COMPREPLY will be empty (no matches)
+    COMPREPLY=()
+
+	# If the previous word is 'pfp' we complete options
+	if [[ "$prev" == "quickfuzz" ]]; then
+		opts="$opts -h "
+		opts="$opts --help "
+		opts="$opts --connect-timeout"
+		opts="$opts --json"
+		opts="$opts --payload-dir"
+		opts="$opts --no-failed"
+		opts="$opts --no-color"
+		opts="$opts --retries"
+		opts="$opts --ssl"
+		opts="$opts --summary"
+		opts="$opts --threads"
+		opts="$opts --timeout"
+	else
+		return 1
+	fi
+
+	mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}") 
+	return 0
+}
+
+complete -o default -F _quickfuzz quickfuzz
