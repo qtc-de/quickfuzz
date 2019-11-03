@@ -19,6 +19,35 @@ response. If a response is found, it will display the corresponding content in a
 that cannot be overlooked easily. 
 
 
+### Installation
+
+-----
+
+**Via setup.py**
+
+To install *quickfuzz*, make sure you have Python 3.6 or greater installed. 
+Then run these commands from the command prompt:
+
+```
+$ pip3 install -r requirements.txt --user
+$ python3 setup.py install --user
+```
+
+**As pip package** (recommended)
+
+If you want to generate a pip package instead, run the following command from the command prompt:
+
+```
+$ python3 setup.py sdist
+```
+
+You can then install the tool via pip using:
+
+```
+$ pip3 install dist/quickfuzz-1.0.0.tar.gz --user
+```
+
+
 ### Example Workflow
 
 -----
