@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function contains() {
-	# Checks whether a certain string is contained inside a list of strings
+	# Checks whether a certain string is contained inside a list of strings.
     if [[ $1 =~ (^|[[:space:]])$2($|[[:space:]]) ]]; then
 		return 0
 	else
@@ -11,7 +11,7 @@ function contains() {
 
 function clean() {
 	# Arguments that were already specified on the command line should be removed from
-	# the listr of possible completions. This is done by this function
+	# the list of possible completions. This is done by this function.
 
 	tmp=$@
 
@@ -48,8 +48,19 @@ function _quickfuzz() {
 
 	# By default, COMPREPLY will be empty (no matches)
     COMPREPLY=()
+	
+	# if an option requires an numeric argument, do not complete anything
+	no_completion_list="--connect-timeout --retries --threads --timeout"
+	if contains "$no_completion_list" "$prev"; then
+		return 0
 
-	if [[ "$prev" == "quickfuzz" ]]; then
+	# for the payload-dir, switch to filename completion (default)
+	elif [[ "$prev" == "--payload-dir" ]]; then
+		compopt -o default
+		return 0
+
+	# otherwise just complete 
+	else
 		opts="$opts -h "
 		opts="$opts --help "
 		opts="$opts --connect-timeout"
@@ -62,12 +73,12 @@ function _quickfuzz() {
 		opts="$opts --summary"
 		opts="$opts --threads"
 		opts="$opts --timeout"
-	else
-		return 1
 	fi
 
-	mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}") 
+	# clear already specified options
+	opts=$(clean $opts)
+	mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
 	return 0
 }
 
-complete -o default -F _quickfuzz quickfuzz
+complete -F _quickfuzz quickfuzz
