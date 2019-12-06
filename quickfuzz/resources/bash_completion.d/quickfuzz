@@ -1,6 +1,42 @@
 #!/bin/bash
 
-_quickfuzz() {
+function contains() {
+	# Checks whether a certain string is contained inside a list of strings.
+    if [[ $1 =~ (^|[[:space:]])$2($|[[:space:]]) ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+function clean() {
+	# Arguments that were already specified on the command line should be removed from
+	# the list of possible completions. This is done by this function.
+
+	tmp=$@
+
+	# iterate over each word inside the current command line
+	for var in $(echo ${COMP_LINE} | sed -e 's/ /\n/g'); do
+
+		# exclude the current word to allow full specified options to be space completed
+		if [[ "$var" == "$cur" ]]; then
+			continue;
+		fi
+		
+		# check if a command line word matches an option and remove it
+		for word in $tmp; do
+			if [[ "$word" == "$var" ]]; then
+				tmp=( "${tmp/${var}}" )
+				break
+			fi
+		done
+	done
+
+	echo $tmp
+}
+
+
+function _quickfuzz() {
 
 	# opts		=	completion options
 	# cur		=	current word
@@ -12,9 +48,19 @@ _quickfuzz() {
 
 	# By default, COMPREPLY will be empty (no matches)
     COMPREPLY=()
+	
+	# if an option requires an numeric argument, do not complete anything
+	no_completion_list="--connect-timeout --retries --threads --timeout"
+	if contains "$no_completion_list" "$prev"; then
+		return 0
 
-	# If the previous word is 'pfp' we complete options
-	if [[ "$prev" == "quickfuzz" ]]; then
+	# for the payload-dir, switch to filename completion (default)
+	elif [[ "$prev" == "--payload-dir" ]]; then
+		compopt -o default
+		return 0
+
+	# otherwise just complete 
+	else
 		opts="$opts -h "
 		opts="$opts --help "
 		opts="$opts --connect-timeout"
@@ -27,12 +73,12 @@ _quickfuzz() {
 		opts="$opts --summary"
 		opts="$opts --threads"
 		opts="$opts --timeout"
-	else
-		return 1
 	fi
 
-	mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}") 
+	# clear already specified options
+	opts=$(clean $opts)
+	mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
 	return 0
 }
 
-complete -o default -F _quickfuzz quickfuzz
+complete -F _quickfuzz quickfuzz
