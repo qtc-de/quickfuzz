@@ -113,4 +113,4 @@ If you have discovered a good opening payload, that revealed a service for you d
 do not hesitate to contact us. We try to collect a decent amount of such payloads to give you a more
 reliable service detection.
 
-*Copyright 2019, Tobias Neitzel and contributors.*
+*Copyright 2019, Tobias Neitzel and the *quickfuzz* contributors.*
