@@ -51,7 +51,7 @@ class Fuzzer:
     other settings like the usage of ssl or the amount of time between requetss.
     '''
 
-    def __init__(self, ip, port, connect_timeout=2, max_retries=2, no_color=False, no_failed=False, payloads=[], ssl=False, server_timeout=2, threads=5, verbose=False):
+    def __init__(self, ip, port, connect_timeout=2, max_retries=2, no_color=False, no_failed=False, payloads=[], ssl=False, ssl_key=None, ssl_pem=None, server_timeout=2, threads=5, verbose=False):
         '''
         Creates a new Fuzzer object.
 
@@ -64,6 +64,8 @@ class Fuzzer:
             no_olor                     (bool)                  Do not colorize outputs
             payloads                    (list[Payload])         Payloads to use for fuzzing
             ssl                         (bool)                  Using ssl connections
+            ssl_key                     (string)                Using ssl key for ssl connections
+            ssl_pem                     (string)                Using ssl certificate for ssl connections
             server_timeout              (int)                   Seconds to wait for a server response
             threads                     (int)                   Number of thrads to use
             verbose                     (bool)                  Print live data for each payload
@@ -73,13 +75,14 @@ class Fuzzer:
         self.connect_timeout = connect_timeout
         self.max_retries = max_retries
         self.ssl = ssl
+        self.ssl_cert_mode = False
+        self.ssl_cert_error = False
         self.server_timeout = server_timeout
         self.threads = threads
         self.verbose = verbose
         self.payloads = payloads
         self.no_failed = no_failed
         self.parameter_dict = {}
-
         # Each Fuzzer can define its own color scheme, or no colors at all
         self.info_color = None if no_color else "white"
         self.error_color = None if no_color else "red" 
@@ -87,6 +90,24 @@ class Fuzzer:
         self.payload_color = None if no_color else "yellow"
         self.warning_color = None if no_color else "yellow"
 
+        if ssl:
+            if ssl_pem is not None and ssl_key is None:
+                if not os.path.isfile(ssl_pem):
+                    termcolor.cprint(f"[-] Certificate file not found!", self.error_color, file=sys.stderr)
+                    sys.exit()
+                self.ssl_cert_mode = True
+            elif ssl_key is not None and ssl_pem is not None:
+                if not os.path.isfile(ssl_pem) or not os.path.isfile(ssl_key):
+                    termcolor.cprint(f"[-] Certificate or key file not found!", self.error_color, file=sys.stderr)
+                    sys.exit()
+                self.ssl_cert_mode = True
+            elif ssl_key is not None:
+                termcolor.cprint(f"[-] Key parameter needs a certificate file!", self.error_color, file=sys.stderr)
+                sys.exit()
+
+            self.ssl_key = ssl_key
+            self.ssl_pem = ssl_pem
+            
 
     def connect(self, terminate=False):
         '''
@@ -99,16 +120,22 @@ class Fuzzer:
         Returns:
             sock                        (Socket)                TCP Socket for the targeted port
         '''
+
+
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         if self.ssl:
             context = ssl.SSLContext()
+            if self.ssl_cert_mode:
+                try:
+                    context.load_cert_chain(self.ssl_pem, self.ssl_key)
+                except Exception as e:
+                    termcolor.cprint("[-] Loading certificate error! Printing exception:\n" + e, self.error_color, file=sys.stderr)
+                    sys.exit()
             context.verify_mode = ssl.CERT_NONE
             context.check_hostname = False
             sock = context.wrap_socket(sock)
-
         target = (self.ip, self.port)
-
         # If the request is blocked for some reason, we wait some seconds
         # and try again, until the connect works or the maximum number of retires is rached
         retry_count = 0
