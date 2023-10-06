@@ -21,6 +21,8 @@ parser.add_argument('--no-failed', dest='nofailed', action='store_true', help='o
 parser.add_argument('--no-color', dest='nocolor', action='store_true', help='do not use color highlighting')
 parser.add_argument('--retries', type=int, default=-1, help='number of retires if a port is closed (default=infinite)')
 parser.add_argument('--ssl', action='store_true', help='use ssl sockets for this port')
+parser.add_argument('--ssl-key', default=None, dest='ssl_key', help='use ssl key and pem for ssl connection')
+parser.add_argument('--ssl-pem', default=None, dest='ssl_pem', help='usd ssl key and pem for ssl connection')
 parser.add_argument('--summary', action='store_true', help='print a summary in the end instead of live data')
 parser.add_argument('--threads', type=int, default=1, help='use ssl sockets for this port')
 parser.add_argument('--timeout', type=int, default=2, help='time to wait for a response (default=2)')
@@ -46,8 +48,8 @@ def main():
     # Create a fuzzer object
     live = not args.summary and not args.json
     fuzzer = quickfuzz.Fuzzer(args.ip, args.port, connect_timeout=args.ct, max_retries=args.retries,
-                              no_color=args.nocolor, no_failed=args.nofailed, ssl=args.ssl,
-                              server_timeout=args.timeout, threads=args.threads, verbose=live)
+                              no_color=args.nocolor, no_failed=args.nofailed, ssl=args.ssl, ssl_key=args.ssl_key,
+                              ssl_pem=args.ssl_pem, server_timeout=args.timeout, threads=args.threads, verbose=live)
 
     # Some payloads contain parameters. Here we cann add their corresponding replacements
     fuzzer.add_parameter(b'<@:IP:@>', args.ip.encode('utf-8'))
